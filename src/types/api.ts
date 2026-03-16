@@ -115,6 +115,20 @@ export interface TimeBlock {
   createdAt: string;
 }
 
+export interface Provider {
+  id: string;
+  clinicId: string;
+  name: string;
+  rut: string;
+  address: string;
+  phone: string;
+  email: string;
+  contactName: string;
+  notes: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface Appointment {
   id: string;
   clinicId: string;

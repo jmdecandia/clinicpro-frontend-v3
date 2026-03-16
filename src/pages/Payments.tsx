@@ -48,8 +48,8 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
 } from 'lucide-react';
-import { paymentApi, patientApi } from '@/services/api';
-import type { Payment, Patient } from '@/types/api';
+import { paymentApi, patientApi, providerApi } from '@/services/api';
+import type { Payment, Patient, Provider } from '@/types/api';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -65,6 +65,7 @@ const PAYMENT_METHODS = [
 export function Payments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [summary, setSummary] = useState<any>({
     today: 0,
     month: 0,
@@ -79,6 +80,8 @@ export function Payments() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAddExpenseDialogOpen, setIsAddExpenseDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isManageProvidersOpen, setIsManageProvidersOpen] = useState(false);
+  const [isAddProviderOpen, setIsAddProviderOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   
   // Formulario de pago (ingreso)
@@ -92,11 +95,22 @@ export function Payments() {
 
   // Formulario de egreso
   const [expenseData, setExpenseData] = useState({
-    provider: '',
+    providerId: '',
     amount: 0,
     method: 'CASH' as const,
     concept: '',
     invoiceNumber: '',
+    notes: '',
+  });
+
+  // Formulario de proveedor
+  const [providerData, setProviderData] = useState({
+    name: '',
+    rut: '',
+    address: '',
+    phone: '',
+    email: '',
+    contactName: '',
     notes: '',
   });
 
@@ -107,13 +121,15 @@ export function Payments() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [paymentsRes, patientsRes, summaryRes] = await Promise.all([
+      const [paymentsRes, patientsRes, summaryRes, providersRes] = await Promise.all([
         paymentApi.list({ limit: 100 }),
         patientApi.list({ limit: 100 }),
         paymentApi.getSummary(),
+        providerApi.list({ active: true }),
       ]);
       setPayments(paymentsRes.data.data || []);
       setPatients(patientsRes.data.data || []);
+      setProviders(providersRes.data || []);
       setSummary(summaryRes.data);
     } catch (error) {
       console.error('Error loading payments data:', error);
@@ -148,23 +164,26 @@ export function Payments() {
 
   const handleAddExpense = async () => {
     try {
-      if (!expenseData.provider || expenseData.amount <= 0) {
+      if (!expenseData.providerId || expenseData.amount <= 0) {
         toast.error('Completa todos los campos requeridos');
         return;
       }
+
+      const provider = providers.find(p => p.id === expenseData.providerId);
+      const providerName = provider?.name || 'Proveedor desconocido';
 
       // Crear egreso como pago negativo
       await paymentApi.create({
         patientId: 'expense',
         amount: -expenseData.amount,
         method: expenseData.method,
-        concept: `EGRESO - ${expenseData.provider}: ${expenseData.concept}`,
+        concept: `EGRESO - ${providerName}: ${expenseData.concept}`,
         notes: `Factura: ${expenseData.invoiceNumber || 'N/A'} - ${expenseData.notes}`,
       });
 
       toast.success('Egreso registrado exitosamente');
       setExpenseData({
-        provider: '',
+        providerId: '',
         amount: 0,
         method: 'CASH',
         concept: '',
@@ -175,6 +194,41 @@ export function Payments() {
       loadData();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Error al registrar egreso');
+    }
+  };
+
+  const handleAddProvider = async () => {
+    try {
+      if (!providerData.name) {
+        toast.error('El nombre del proveedor es requerido');
+        return;
+      }
+
+      await providerApi.create(providerData);
+      toast.success('Proveedor registrado exitosamente');
+      setProviderData({
+        name: '',
+        rut: '',
+        address: '',
+        phone: '',
+        email: '',
+        contactName: '',
+        notes: '',
+      });
+      setIsAddProviderOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Error al registrar proveedor');
+    }
+  };
+
+  const handleDeleteProvider = async (providerId: string) => {
+    try {
+      await providerApi.delete(providerId);
+      toast.success('Proveedor eliminado');
+      loadData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Error al eliminar proveedor');
     }
   };
 
@@ -413,12 +467,37 @@ export function Payments() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Proveedor *</Label>
-                <Input
-                  value={expenseData.provider}
-                  onChange={(e) => setExpenseData({ ...expenseData, provider: e.target.value })}
-                  placeholder="Nombre del proveedor"
-                />
+                <div className="flex items-center justify-between">
+                  <Label>Proveedor *</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setIsManageProvidersOpen(true)}
+                    className="text-cyan-600"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Gestionar Proveedores
+                  </Button>
+                </div>
+                <Select
+                  value={expenseData.providerId}
+                  onValueChange={(v) => setExpenseData({ ...expenseData, providerId: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar proveedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providers.length === 0 ? (
+                      <SelectItem value="" disabled>No hay proveedores registrados</SelectItem>
+                    ) : (
+                      providers.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {provider.name} {provider.rut ? `(${provider.rut})` : ''}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>N° de Factura</Label>
@@ -483,7 +562,7 @@ export function Payments() {
               </DialogClose>
               <Button
                 onClick={handleAddExpense}
-                disabled={!expenseData.provider || expenseData.amount <= 0}
+                disabled={!expenseData.providerId || expenseData.amount <= 0}
                 variant="destructive"
               >
                 Registrar Egreso
@@ -749,6 +828,160 @@ export function Payments() {
             <Button variant="destructive" onClick={handleDelete}>
               <Trash2 className="h-4 w-4 mr-2" />
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Gestionar Proveedores */}
+      <Dialog open={isManageProvidersOpen} onOpenChange={setIsManageProvidersOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gestionar Proveedores</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-slate-500">
+                {providers.length} proveedor(es) registrado(s)
+              </p>
+              <Button 
+                size="sm" 
+                onClick={() => setIsAddProviderOpen(true)}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Nuevo Proveedor
+              </Button>
+            </div>
+            
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>RUT</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {providers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-slate-400">
+                        No hay proveedores registrados
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    providers.map((provider) => (
+                      <TableRow key={provider.id}>
+                        <TableCell className="font-medium">{provider.name}</TableCell>
+                        <TableCell>{provider.rut || '-'}</TableCell>
+                        <TableCell>{provider.phone || '-'}</TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleDeleteProvider(provider.id)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsManageProvidersOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Agregar Proveedor */}
+      <Dialog open={isAddProviderOpen} onOpenChange={setIsAddProviderOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registrar Nuevo Proveedor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nombre *</Label>
+              <Input
+                value={providerData.name}
+                onChange={(e) => setProviderData({ ...providerData, name: e.target.value })}
+                placeholder="Nombre del proveedor"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>RUT</Label>
+                <Input
+                  value={providerData.rut}
+                  onChange={(e) => setProviderData({ ...providerData, rut: e.target.value })}
+                  placeholder="Ej: 12.345.678-9"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Teléfono</Label>
+                <Input
+                  value={providerData.phone}
+                  onChange={(e) => setProviderData({ ...providerData, phone: e.target.value })}
+                  placeholder="+56 9 1234 5678"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Dirección</Label>
+              <Input
+                value={providerData.address}
+                onChange={(e) => setProviderData({ ...providerData, address: e.target.value })}
+                placeholder="Dirección completa"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={providerData.email}
+                  onChange={(e) => setProviderData({ ...providerData, email: e.target.value })}
+                  placeholder="proveedor@email.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Contacto</Label>
+                <Input
+                  value={providerData.contactName}
+                  onChange={(e) => setProviderData({ ...providerData, contactName: e.target.value })}
+                  placeholder="Nombre del contacto"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notas</Label>
+              <textarea
+                value={providerData.notes}
+                onChange={(e) => setProviderData({ ...providerData, notes: e.target.value })}
+                placeholder="Notas adicionales"
+                className="w-full min-h-[60px] px-3 py-2 rounded-md border border-slate-200 text-sm resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              onClick={handleAddProvider}
+              disabled={!providerData.name}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600"
+            >
+              Registrar Proveedor
             </Button>
           </DialogFooter>
         </DialogContent>

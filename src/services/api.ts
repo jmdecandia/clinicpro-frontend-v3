@@ -51,10 +51,15 @@ api.interceptors.response.use(
     }
     
     if (error.response?.status === 401) {
-      // Token expirado o inválido
-      localStorage.removeItem('clinicpro_token');
-      localStorage.removeItem('clinicpro_user');
-      window.location.href = '/login';
+      // No redirigir si estamos en la página de login (para mostrar el error de credenciales)
+      const isLoginPage = window.location.pathname.includes('/login');
+      
+      if (!isLoginPage) {
+        // Token expirado o inválido - solo redirigir si no estamos en login
+        localStorage.removeItem('clinicpro_token');
+        localStorage.removeItem('clinicpro_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -345,6 +350,80 @@ export const notificationApi = {
       configured: boolean;
       config: { publicKey: string; serviceId: string; templateId: string };
     }>('/notifications/config'),
+};
+
+// ==================== PROVIDERS ====================
+
+export const providerApi = {
+  list: (params?: { active?: boolean }) =>
+    api.get<Array<{
+      id: string;
+      name: string;
+      rut: string;
+      address: string;
+      phone: string;
+      email: string;
+      contactName: string;
+      notes: string;
+      isActive: boolean;
+    }>>('/providers', { params }),
+
+  getById: (id: string) =>
+    api.get<{
+      id: string;
+      name: string;
+      rut: string;
+      address: string;
+      phone: string;
+      email: string;
+      contactName: string;
+      notes: string;
+      isActive: boolean;
+    }>(`/providers/${id}`),
+
+  create: (data: {
+    name: string;
+    rut?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    contactName?: string;
+    notes?: string;
+  }) => api.post<{ message: string; provider: {
+      id: string;
+      name: string;
+      rut: string;
+      address: string;
+      phone: string;
+      email: string;
+      contactName: string;
+      notes: string;
+      isActive: boolean;
+    } }>('/providers', data),
+
+  update: (id: string, data: Partial<{
+    name: string;
+    rut: string;
+    address: string;
+    phone: string;
+    email: string;
+    contactName: string;
+    notes: string;
+    isActive: boolean;
+  }>) => api.put<{ message: string; provider: {
+      id: string;
+      name: string;
+      rut: string;
+      address: string;
+      phone: string;
+      email: string;
+      contactName: string;
+      notes: string;
+      isActive: boolean;
+    } }>(`/providers/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`/providers/${id}`),
 };
 
 // ==================== DASHBOARD ====================
