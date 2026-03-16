@@ -491,7 +491,7 @@ export function Dashboard() {
                     {patient.firstName} {patient.lastName}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es })}
+                    {patient.createdAt ? format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es }) : '-'}
                   </p>
                 </div>
               </div>
