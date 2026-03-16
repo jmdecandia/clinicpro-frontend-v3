@@ -23,11 +23,26 @@ import {
 } from 'lucide-react';
 import { dashboardApi, appointmentApi, paymentApi, debtApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { DashboardData, Appointment, Debt } from '@/types/api';
+import type { DashboardData, Appointment } from '@/types/api';
 import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+type DashboardDebt = {
+  id: string;
+  patientId: string;
+  patient?: {
+    firstName: string;
+    lastName: string;
+  };
+  amount: number;
+  remainingAmount: number;
+  paidAmount: number;
+  reason: string;
+  status: 'PENDING' | 'PARTIAL' | 'PAID';
+  createdAt: string;
+};
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -37,7 +52,7 @@ export function Dashboard() {
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
   const [weeklyRevenue, setWeeklyRevenue] = useState<any[]>([]);
-  const [debts, setDebts] = useState<{ debts: Debt[]; summary: any } | null>(null);
+  const [debts, setDebts] = useState<{ debts: DashboardDebt[]; summary: any } | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -513,7 +528,7 @@ export function Dashboard() {
                     {patient.firstName} {patient.lastName}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es })}
+                    {patient.createdAt ? format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es }) : '-'}
                   </p>
                 </div>
               </div>
