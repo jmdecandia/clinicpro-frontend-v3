@@ -129,7 +129,7 @@ export function Payments() {
       ]);
       setPayments(paymentsRes.data.data || []);
       setPatients(patientsRes.data.data || []);
-      setProviders(providersRes.data || []);
+      setProviders((providersRes.data || []) as Provider[]);
       setSummary(summaryRes.data);
     } catch (error) {
       console.error('Error loading payments data:', error);
