@@ -47,6 +47,7 @@ import {
   Wallet,
   ArrowDownLeft,
   ArrowUpRight,
+  Search,
 } from 'lucide-react';
 import { paymentApi, patientApi, providerApi } from '@/services/api';
 import type { Payment, Patient, Provider } from '@/types/api';
@@ -129,7 +130,7 @@ export function Payments() {
       ]);
       setPayments(paymentsRes.data.data || []);
       setPatients(patientsRes.data.data || []);
-      setProviders((providersRes.data || []) as Provider[]);
+      setProviders(providersRes.data || []);
       setSummary(summaryRes.data);
     } catch (error) {
       console.error('Error loading payments data:', error);
@@ -254,11 +255,20 @@ export function Payments() {
     return patient ? `${patient.firstName} ${patient.lastName}` : 'Desconocido';
   };
 
-  // Filtrar pacientes para búsqueda
-  const filteredPatients = patients.filter(p => 
-    `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchPatient.toLowerCase()) ||
-    p.email?.toLowerCase().includes(searchPatient.toLowerCase())
-  );
+  // Filtrar pacientes para búsqueda (muestra todos si no hay búsqueda)
+  const filteredPatients = searchPatient.trim() 
+    ? patients.filter(p => {
+        const searchLower = searchPatient.toLowerCase().trim();
+        const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
+        return (
+          fullName.includes(searchLower) ||
+          p.email?.toLowerCase().includes(searchLower) ||
+          p.phone?.toLowerCase().includes(searchLower) ||
+          p.firstName.toLowerCase().includes(searchLower) ||
+          p.lastName.toLowerCase().includes(searchLower)
+        );
+      })
+    : patients;
 
   // Calcular deudas por paciente
   const debtsByPatient = patients.map(patient => {
@@ -367,26 +377,38 @@ export function Payments() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Buscar Paciente *</Label>
-                <Input
-                  placeholder="Escribe para buscar..."
-                  value={searchPatient}
-                  onChange={(e) => setSearchPatient(e.target.value)}
-                  className="mb-2"
-                />
+                <Label>Buscar y Seleccionar Paciente *</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Escribe nombre, email o teléfono..."
+                    value={searchPatient}
+                    onChange={(e) => setSearchPatient(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
                 <Select
                   value={formData.patientId}
                   onValueChange={(v) => setFormData({ ...formData, patientId: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar paciente" />
+                    <SelectValue placeholder={searchPatient ? `Buscando "${searchPatient}"...` : "Seleccionar paciente"} />
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px]">
-                    {(searchPatient ? filteredPatients : patients).map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.firstName} {p.lastName}
+                    {filteredPatients.length === 0 && searchPatient ? (
+                      <SelectItem value="" disabled>
+                        No se encontraron pacientes con "{searchPatient}"
                       </SelectItem>
-                    ))}
+                    ) : (
+                      filteredPatients.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          <div className="flex flex-col">
+                            <span>{p.firstName} {p.lastName}</span>
+                            <span className="text-xs text-slate-500">{p.phone} • {p.email}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

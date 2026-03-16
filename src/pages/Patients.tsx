@@ -507,7 +507,7 @@ export function Patients() {
                     {selectedPatient.firstName} {selectedPatient.lastName}
                   </h3>
                   <p className="text-slate-500">
-                    Paciente desde {selectedPatient.createdAt ? format(parseISO(selectedPatient.createdAt), 'MMMM yyyy', { locale: es }) : '-'}
+                    Paciente desde {format(parseISO(selectedPatient.createdAt), 'MMMM yyyy', { locale: es })}
                   </p>
                 </div>
               </div>

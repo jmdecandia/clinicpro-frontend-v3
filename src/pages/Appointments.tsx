@@ -51,8 +51,12 @@ import {
   ChevronRight,
   X,
   AlertCircle,
+  FileText,
+  Upload,
+  Wallet,
+  History,
 } from 'lucide-react';
-import { appointmentApi, patientApi, serviceApi, notificationApi, professionalApi } from '@/services/api';
+import { appointmentApi, patientApi, serviceApi, notificationApi, professionalApi, debtApi, professionalNoteApi } from '@/services/api';
 import type { Appointment, Patient, Service, Professional } from '@/types/api';
 import { format, parseISO, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -87,8 +91,11 @@ export function Appointments() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAttendanceDialogOpen, setIsAttendanceDialogOpen] = useState(false);
+  const [isDebtDialogOpen, setIsDebtDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   
+  // Formulario de cita
   const [formData, setFormData] = useState({
     patientId: '',
     serviceId: '',
@@ -97,6 +104,20 @@ export function Appointments() {
     time: '',
     notes: '',
   });
+
+  // Formulario de asistencia con notas
+  const [attendanceData, setAttendanceData] = useState({
+    attended: false,
+    professionalNote: '',
+    createDebt: false,
+    debtAmount: 0,
+    debtReason: 'Inasistencia a cita',
+    attachments: [] as { name: string; type: string; url: string }[],
+  });
+
+  // Datos de deuda del paciente
+  const [patientDebts, setPatientDebts] = useState<any[]>([]);
+  const [patientNotes, setPatientNotes] = useState<any[]>([]);
 
   useEffect(() => {
     loadAppointments();
@@ -234,25 +255,109 @@ export function Appointments() {
     }
   };
 
-  const handleAttendance = async (attended: boolean) => {
+  const handleAttendanceSubmit = async () => {
     if (!selectedAppointment) return;
     
     try {
-      const newStatus = attended ? 'COMPLETED' : 'NO_SHOW';
+      const newStatus = attendanceData.attended ? 'COMPLETED' : 'NO_SHOW';
       await appointmentApi.changeStatus(selectedAppointment.id, newStatus);
       
-      if (!attended) {
-        // Crear deuda automáticamente
-        toast.warning('Se ha registrado la inasistencia. Se generará una deuda.');
-      } else {
-        toast.success('Asistencia confirmada');
+      // Crear nota del profesional si hay contenido
+      if (attendanceData.professionalNote.trim()) {
+        await professionalNoteApi.create({
+          patientId: selectedAppointment.patientId,
+          appointmentId: selectedAppointment.id,
+          title: `Atención - ${format(parseISO(selectedAppointment.date), 'dd/MM/yyyy')}`,
+          content: attendanceData.professionalNote,
+          tags: attendanceData.attended ? ['atencion-realizada'] : ['inasistencia'],
+        });
       }
+      
+      // Subir archivos adjuntos si hay
+      for (const attachment of attendanceData.attachments) {
+        // En un caso real, aquí se subiría el archivo a un servidor
+        // Por ahora simulamos que se guarda
+        console.log('Adjunto:', attachment);
+      }
+      
+      // Crear deuda si no asistió y se especificó monto
+      if (!attendanceData.attended && attendanceData.createDebt && attendanceData.debtAmount > 0) {
+        await debtApi.create({
+          patientId: selectedAppointment.patientId,
+          amount: attendanceData.debtAmount,
+          reason: attendanceData.debtReason,
+          appointmentId: selectedAppointment.id,
+          notes: `Deuda generada por inasistencia a cita del ${selectedAppointment.date} a las ${selectedAppointment.time}`,
+        });
+        toast.warning(`Deuda de $${attendanceData.debtAmount.toFixed(2)} registrada por inasistencia`);
+      } else if (!attendanceData.attended) {
+        toast.warning('Se ha registrado la inasistencia');
+      } else {
+        toast.success('Asistencia confirmada y nota registrada');
+      }
+      
+      // Resetear formulario
+      setAttendanceData({
+        attended: false,
+        professionalNote: '',
+        createDebt: false,
+        debtAmount: 0,
+        debtReason: 'Inasistencia a cita',
+        attachments: [],
+      });
       
       setIsAttendanceDialogOpen(false);
       loadAppointments();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Error al registrar asistencia');
     }
+  };
+
+  const loadPatientDebts = async (patientId: string) => {
+    try {
+      const response = await debtApi.getByPatient(patientId);
+      setPatientDebts(response.data.debts || []);
+    } catch (error) {
+      console.error('Error loading patient debts:', error);
+    }
+  };
+
+  const loadPatientNotes = async (patientId: string) => {
+    try {
+      const response = await professionalNoteApi.list({ patientId });
+      setPatientNotes(response.data || []);
+    } catch (error) {
+      console.error('Error loading patient notes:', error);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    // Simular carga de archivos - en producción se subiría a un servidor
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const newAttachment = {
+          name: file.name,
+          type: file.type,
+          url: event.target?.result as string,
+        };
+        setAttendanceData(prev => ({
+          ...prev,
+          attachments: [...prev.attachments, newAttachment],
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttendanceData(prev => ({
+      ...prev,
+      attachments: prev.attachments.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSendNotification = async (appointment: Appointment) => {
@@ -663,6 +768,26 @@ Clínica`;
                                     <Bell className="h-4 w-4 mr-2" />
                                     Enviar WhatsApp
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => { 
+                                      setSelectedAppointment(cita); 
+                                      loadPatientDebts(cita.patientId);
+                                      setIsDebtDialogOpen(true); 
+                                    }}
+                                  >
+                                    <Wallet className="h-4 w-4 mr-2" />
+                                    Gestionar Deuda
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => { 
+                                      setSelectedAppointment(cita); 
+                                      loadPatientNotes(cita.patientId);
+                                      setIsHistoryDialogOpen(true); 
+                                    }}
+                                  >
+                                    <History className="h-4 w-4 mr-2" />
+                                    Ver Historial
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => { setSelectedAppointment(cita); setIsDeleteDialogOpen(true); }} className="text-red-600">
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Eliminar
@@ -774,38 +899,153 @@ Clínica`;
         </TabsContent>
       </Tabs>
 
-      {/* Dialog de Asistencia */}
+      {/* Dialog de Asistencia Mejorado */}
       <Dialog open={isAttendanceDialogOpen} onOpenChange={setIsAttendanceDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Registrar Asistencia</DialogTitle>
+            <DialogTitle>Registrar Atención</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <p className="text-slate-600 mb-4">
-              La cita de <strong>{selectedAppointment?.patient?.firstName} {selectedAppointment?.patient?.lastName}</strong> 
-              {' '}a las <strong>{selectedAppointment?.time}</strong> ha pasado.
-            </p>
-            <p className="text-sm text-slate-500 mb-6">
-              ¿El paciente asistió a la cita?
-            </p>
-            <div className="flex gap-3">
-              <Button 
-                className="flex-1 bg-green-500 hover:bg-green-600"
-                onClick={() => handleAttendance(true)}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Sí, asistió
-              </Button>
-              <Button 
-                variant="outline"
-                className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
-                onClick={() => handleAttendance(false)}
-              >
-                <X className="h-4 w-4 mr-2" />
-                No asistió
-              </Button>
+          <div className="py-4 space-y-4">
+            {/* Info del paciente */}
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-sm text-slate-500">Paciente</p>
+              <p className="font-medium">
+                {selectedAppointment?.patient?.firstName} {selectedAppointment?.patient?.lastName}
+              </p>
+              <p className="text-sm text-slate-500">
+                {selectedAppointment?.date} a las {selectedAppointment?.time}
+              </p>
             </div>
+
+            {/* Asistencia */}
+            <div className="space-y-2">
+              <Label>¿El paciente asistió?</Label>
+              <div className="flex gap-3">
+                <Button 
+                  type="button"
+                  className={`flex-1 ${attendanceData.attended ? 'bg-green-500 hover:bg-green-600' : 'bg-slate-200 hover:bg-slate-300'}`}
+                  onClick={() => setAttendanceData({ ...attendanceData, attended: true })}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Sí, asistió
+                </Button>
+                <Button 
+                  type="button"
+                  variant="outline"
+                  className={`flex-1 ${!attendanceData.attended ? 'border-red-500 text-red-600 bg-red-50' : 'border-slate-300'}`}
+                  onClick={() => setAttendanceData({ ...attendanceData, attended: false })}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  No asistió
+                </Button>
+              </div>
+            </div>
+
+            {/* Notas del profesional */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Notas de la atención (opcional)
+              </Label>
+              <textarea
+                value={attendanceData.professionalNote}
+                onChange={(e) => setAttendanceData({ ...attendanceData, professionalNote: e.target.value })}
+                placeholder="Registra observaciones, tratamientos realizados, recomendaciones, etc."
+                className="w-full min-h-[100px] px-3 py-2 rounded-md border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+
+            {/* Adjuntos */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                Adjuntos (opcional)
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="text-sm"
+                />
+              </div>
+              {attendanceData.attachments.length > 0 && (
+                <div className="space-y-1">
+                  {attendanceData.attachments.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
+                      <span className="truncate">{file.name}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removeAttachment(index)}
+                        className="text-red-600 h-6 w-6 p-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Deuda por inasistencia */}
+            {!attendanceData.attended && (
+              <div className="space-y-3 p-4 bg-red-50 rounded-lg border border-red-200">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="createDebt"
+                    checked={attendanceData.createDebt}
+                    onChange={(e) => setAttendanceData({ ...attendanceData, createDebt: e.target.checked })}
+                    className="rounded border-slate-300"
+                  />
+                  <Label htmlFor="createDebt" className="text-red-700 font-medium cursor-pointer">
+                    Generar deuda por inasistencia
+                  </Label>
+                </div>
+                
+                {attendanceData.createDebt && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-red-700">Monto a cobrar *</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={attendanceData.debtAmount || ''}
+                        onChange={(e) => setAttendanceData({ ...attendanceData, debtAmount: parseFloat(e.target.value) || 0 })}
+                        placeholder="0.00"
+                        className="border-red-200"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-red-700">Motivo</Label>
+                      <Input
+                        value={attendanceData.debtReason}
+                        onChange={(e) => setAttendanceData({ ...attendanceData, debtReason: e.target.value })}
+                        placeholder="Ej: Inasistencia a cita programada"
+                        className="border-red-200"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAttendanceDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAttendanceSubmit}
+              disabled={!attendanceData.attended && attendanceData.createDebt && attendanceData.debtAmount <= 0}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Guardar Registro
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -827,6 +1067,150 @@ Clínica`;
               Eliminar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Gestionar Deuda */}
+      <Dialog open={isDebtDialogOpen} onOpenChange={setIsDebtDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-red-500" />
+              Gestionar Deuda
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-sm text-slate-500">Paciente</p>
+              <p className="font-medium">
+                {selectedAppointment?.patient?.firstName} {selectedAppointment?.patient?.lastName}
+              </p>
+            </div>
+
+            {patientDebts.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <Wallet className="h-12 w-12 mx-auto mb-2" />
+                <p>No hay deudas registradas</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-slate-700">Deudas pendientes:</h4>
+                {patientDebts
+                  .filter((d) => d.status === 'PENDING' || d.status === 'PARTIAL')
+                  .map((debt) => (
+                    <div key={debt.id} className="p-3 bg-red-50 rounded-lg border border-red-100">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium text-red-700">{debt.reason}</p>
+                          <p className="text-xs text-slate-500">
+                            {format(parseISO(debt.createdAt), 'dd MMM yyyy', { locale: es })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-red-600">
+                            ${debt.remainingAmount?.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            de ${debt.amount?.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                
+                {patientDebts.filter((d) => d.status === 'PENDING' || d.status === 'PARTIAL').length === 0 && (
+                  <p className="text-center text-slate-500 py-4">No hay deudas pendientes</p>
+                )}
+              </div>
+            )}
+
+            <div className="pt-4 border-t">
+              <Button 
+                onClick={() => {
+                  setIsDebtDialogOpen(false);
+                  navigate('/payments');
+                }}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600"
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Registrar Pago
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Ver Historial */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-cyan-500" />
+              Historial del Paciente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-sm text-slate-500">Paciente</p>
+              <p className="font-medium">
+                {selectedAppointment?.patient?.firstName} {selectedAppointment?.patient?.lastName}
+              </p>
+            </div>
+
+            {patientNotes.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <FileText className="h-12 w-12 mx-auto mb-2" />
+                <p>No hay notas registradas</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-slate-700">Notas de atenciones previas:</h4>
+                {patientNotes.map((note) => (
+                  <div key={note.id} className="p-4 bg-slate-50 rounded-lg border">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-medium">{note.title}</p>
+                        <p className="text-xs text-slate-500">
+                          {format(parseISO(note.createdAt), 'dd MMM yyyy', { locale: es })}
+                          {note.professional && ` - ${note.professional.firstName} ${note.professional.lastName}`}
+                        </p>
+                      </div>
+                      {note.tags && note.tags.length > 0 && (
+                        <div className="flex gap-1">
+                          {note.tags.map((tag: string, idx: number) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                    
+                    {note.attachments && note.attachments.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs text-slate-500 mb-2">Adjuntos:</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {note.attachments.map((att: any) => (
+                            <a
+                              key={att.id}
+                              href={att.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-cyan-600 hover:underline flex items-center gap-1"
+                            >
+                              <FileText className="h-3 w-3" />
+                              {att.fileName}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

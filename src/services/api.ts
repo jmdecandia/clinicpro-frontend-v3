@@ -352,6 +352,205 @@ export const notificationApi = {
     }>('/notifications/config'),
 };
 
+// ==================== DEBTS ====================
+
+export const debtApi = {
+  list: (params?: { patientId?: string; status?: string }) =>
+    api.get<{
+      debts: Array<{
+        id: string;
+        patientId: string;
+        patient?: {
+          firstName: string;
+          lastName: string;
+        };
+        amount: number;
+        remainingAmount: number;
+        paidAmount: number;
+        reason: string;
+        status: 'PENDING' | 'PARTIAL' | 'PAID';
+        createdAt: string;
+      }>;
+      summary: {
+        totalDebt: number;
+        totalPaid: number;
+        count: number;
+        pendingCount: number;
+      };
+    }>('/debts', { params }),
+
+  getByPatient: (patientId: string) =>
+    api.get<{
+      patient: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      };
+      debts: Array<{
+        id: string;
+        amount: number;
+        remainingAmount: number;
+        paidAmount: number;
+        reason: string;
+        status: 'PENDING' | 'PARTIAL' | 'PAID';
+        createdAt: string;
+      }>;
+      totalDebt: number;
+    }>(`/debts/patient/${patientId}`),
+
+  create: (data: {
+    patientId: string;
+    amount: number;
+    reason: string;
+    appointmentId?: string;
+    notes?: string;
+  }) => api.post<{
+    message: string;
+    debt: {
+      id: string;
+      patientId: string;
+      amount: number;
+      remainingAmount: number;
+      reason: string;
+      status: string;
+    };
+  }>('/debts', data),
+
+  addPayment: (debtId: string, data: {
+    amount: number;
+    method?: string;
+    notes?: string;
+  }) => api.post<{
+    message: string;
+    debt: {
+      id: string;
+      amount: number;
+      remainingAmount: number;
+      paidAmount: number;
+      status: string;
+    };
+    payment: {
+      id: string;
+      amount: number;
+      paidAt: string;
+    };
+  }>(`/debts/${debtId}/payment`, data),
+
+  delete: (id: string) =>
+    api.delete(`/debts/${id}`),
+};
+
+// ==================== PROFESSIONAL NOTES ====================
+
+export const professionalNoteApi = {
+  list: (params?: { patientId?: string; appointmentId?: string }) =>
+    api.get<Array<{
+      id: string;
+      patientId: string;
+      patient?: {
+        firstName: string;
+        lastName: string;
+      };
+      appointmentId?: string;
+      professionalId: string;
+      professional?: {
+        firstName: string;
+        lastName: string;
+      };
+      title: string;
+      content: string;
+      tags: string[];
+      attachments: Array<{
+        id: string;
+        fileName: string;
+        fileType: string;
+        fileUrl: string;
+        description: string;
+      }>;
+      createdAt: string;
+    }>>('/professional-notes', { params }),
+
+  getById: (id: string) =>
+    api.get<{
+      id: string;
+      patientId: string;
+      patient?: {
+        firstName: string;
+        lastName: string;
+      };
+      appointmentId?: string;
+      professionalId: string;
+      professional?: {
+        firstName: string;
+        lastName: string;
+      };
+      title: string;
+      content: string;
+      tags: string[];
+      attachments: Array<{
+        id: string;
+        fileName: string;
+        fileType: string;
+        fileUrl: string;
+        description: string;
+      }>;
+      createdAt: string;
+    }>(`/professional-notes/${id}`),
+
+  create: (data: {
+    patientId: string;
+    appointmentId?: string;
+    professionalId?: string;
+    title: string;
+    content: string;
+    tags?: string[];
+  }) => api.post<{
+    message: string;
+    note: {
+      id: string;
+      patientId: string;
+      title: string;
+      content: string;
+      createdAt: string;
+    };
+  }>('/professional-notes', data),
+
+  update: (id: string, data: Partial<{
+    title: string;
+    content: string;
+    tags: string[];
+  }>) => api.put<{
+    message: string;
+    note: {
+      id: string;
+      title: string;
+      content: string;
+      updatedAt: string;
+    };
+  }>(`/professional-notes/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`/professional-notes/${id}`),
+
+  addAttachment: (noteId: string, data: {
+    fileName: string;
+    fileType: string;
+    fileUrl: string;
+    description?: string;
+  }) => api.post<{
+    message: string;
+    attachment: {
+      id: string;
+      fileName: string;
+      fileType: string;
+      fileUrl: string;
+    };
+  }>(`/professional-notes/${noteId}/attachments`, data),
+
+  deleteAttachment: (attachmentId: string) =>
+    api.delete(`/attachments/${attachmentId}`),
+};
+
 // ==================== PROVIDERS ====================
 
 export const providerApi = {

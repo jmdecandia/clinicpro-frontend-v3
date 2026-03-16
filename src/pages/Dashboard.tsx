@@ -21,9 +21,9 @@ import {
   Calendar,
   CreditCard,
 } from 'lucide-react';
-import { dashboardApi, appointmentApi, paymentApi } from '@/services/api';
+import { dashboardApi, appointmentApi, paymentApi, debtApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { DashboardData, Appointment } from '@/types/api';
+import type { DashboardData, Appointment, Debt } from '@/types/api';
 import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -37,11 +37,13 @@ export function Dashboard() {
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
   const [weeklyRevenue, setWeeklyRevenue] = useState<any[]>([]);
+  const [debts, setDebts] = useState<{ debts: Debt[]; summary: any } | null>(null);
 
   useEffect(() => {
     loadDashboardData();
     loadTodayAppointments();
     loadPaymentSummary();
+    loadDebts();
     generateWeeklyRevenue();
   }, []);
 
@@ -73,6 +75,15 @@ export function Dashboard() {
       setPaymentSummary(response.data);
     } catch (error) {
       console.error('Error loading payment summary:', error);
+    }
+  };
+
+  const loadDebts = async () => {
+    try {
+      const response = await debtApi.list();
+      setDebts(response.data);
+    } catch (error) {
+      console.error('Error loading debts:', error);
     }
   };
 
@@ -251,15 +262,15 @@ export function Dashboard() {
         })}
       </div>
 
-      {/* Analytics de Facturación */}
+      {/* Resumen de ingresos y métricas financieras */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-emerald-500" />
-            Analytics de Facturación
+            Resumen de ingresos y métricas financieras
           </CardTitle>
           <CardDescription>
-            Resumen de ingresos y métricas financieras
+            Visualización de rendimiento financiero de la clínica
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -391,7 +402,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Próximas Citas (Próximos días) */}
+        {/* Próximas Citas (Próximos días - solo futuras) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -410,47 +421,58 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[300px]">
-              {data?.recent.appointments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                  <CalendarDays className="h-12 w-12 mb-2" />
-                  <p>No hay citas próximas</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {data?.recent.appointments.slice(0, 5).map((appointment) => {
-                    const status = getStatusBadge(appointment.status);
-                    return (
-                      <div
-                        key={appointment.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
-                            <User className="h-5 w-5 text-white" />
+              {(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const upcomingAppointments = data?.recent.appointments.filter(
+                  (a) => a.date > today && (a.status === 'PENDING' || a.status === 'CONFIRMED')
+                ) || [];
+                
+                if (upcomingAppointments.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                      <CalendarDays className="h-12 w-12 mb-2" />
+                      <p>No hay citas próximas</p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-3">
+                    {upcomingAppointments.slice(0, 5).map((appointment) => {
+                      const status = getStatusBadge(appointment.status);
+                      return (
+                        <div
+                          key={appointment.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
+                              <User className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-900">
+                                {appointment.patient.firstName} {appointment.patient.lastName}
+                              </p>
+                              <p className="text-sm text-slate-500">
+                                {appointment.service.name}
+                              </p>
+                            </div>
                           </div>
-                          <div>
+                          <div className="text-right">
                             <p className="font-medium text-slate-900">
-                              {appointment.patient.firstName} {appointment.patient.lastName}
+                              {format(parseISO(appointment.date), 'EEE d MMM', { locale: es })}
                             </p>
-                            <p className="text-sm text-slate-500">
-                              {appointment.service.name}
-                            </p>
+                            <p className="text-sm text-slate-500">{appointment.time}</p>
+                            <Badge variant="outline" className={status.style}>
+                              {status.label}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium text-slate-900">
-                            {format(parseISO(appointment.date), 'EEE d MMM', { locale: es })}
-                          </p>
-                          <p className="text-sm text-slate-500">{appointment.time}</p>
-                          <Badge variant="outline" className={status.style}>
-                            {status.label}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </ScrollArea>
           </CardContent>
         </Card>
@@ -491,7 +513,7 @@ export function Dashboard() {
                     {patient.firstName} {patient.lastName}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {patient.createdAt ? format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es }) : '-'}
+                    {format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es })}
                   </p>
                 </div>
               </div>
@@ -499,6 +521,71 @@ export function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Sección de Deudores */}
+      {debts && debts.summary.pendingCount > 0 && (
+        <Card className="border-red-200">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-red-50">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2 text-red-700">
+              <AlertCircle className="h-5 w-5" />
+              Deudores
+              <Badge variant="destructive" className="ml-2">
+                {debts.summary.pendingCount}
+              </Badge>
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-600"
+              onClick={() => navigate('/patients?view=debts')}
+            >
+              Gestionar deudas
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {debts.debts
+                .filter((d) => d.status === 'PENDING' || d.status === 'PARTIAL')
+                .slice(0, 6)
+                .map((debt) => (
+                  <div
+                    key={debt.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-red-50 border border-red-100 hover:bg-red-100 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/patients?id=${debt.patientId}&view=debt`)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
+                        <span className="text-white font-medium text-sm">
+                          {debt.patient?.firstName?.[0]}{debt.patient?.lastName?.[0]}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-900">
+                          {debt.patient?.firstName} {debt.patient?.lastName}
+                        </p>
+                        <p className="text-xs text-slate-500">{debt.reason}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-red-600">
+                        ${debt.remainingAmount?.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        de ${debt.amount?.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+            {debts.summary.pendingCount > 6 && (
+              <p className="text-center text-sm text-slate-500 mt-4">
+                Y {debts.summary.pendingCount - 6} deudor(es) más...
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ export interface User {
   isActive: boolean;
   clinicId: string | null;
   clinic?: Clinic;
-  createdAt?: string;
+  createdAt: string;
 }
 
 export interface Clinic {
@@ -29,12 +29,12 @@ export interface Clinic {
   plan: string;
   whatsappEnabled: boolean;
   settings?: ClinicSettings;
-  createdAt?: string;
+  createdAt: string;
 }
 
 export interface ClinicSettings {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   businessHours: Record<string, { open: string | null; close: string | null }>;
   appointmentDuration: number;
   timeSlotInterval: number;
@@ -46,7 +46,7 @@ export interface ClinicSettings {
 
 export interface Patient {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -59,7 +59,7 @@ export interface Patient {
   notes?: string;
   customData?: Record<string, any>;
   isActive: boolean;
-  createdAt?: string;
+  createdAt: string;
   _count?: {
     appointments: number;
     payments: number;
@@ -68,14 +68,14 @@ export interface Patient {
 
 export interface Service {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   name: string;
   description?: string;
   price: number;
   duration: number;
   category: string;
   isActive: boolean;
-  createdAt?: string;
+  createdAt: string;
 }
 
 export type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
@@ -92,7 +92,7 @@ export interface WorkingHours {
 
 export interface Professional {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -101,23 +101,23 @@ export interface Professional {
   color: string;
   isActive: boolean;
   workingHours: WorkingHours;
-  createdAt?: string;
+  createdAt: string;
 }
 
 export interface TimeBlock {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   professionalId: string;
   date: string;
   startTime: string;
   endTime: string;
   reason: string;
-  createdAt?: string;
+  createdAt: string;
 }
 
 export interface Provider {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   name: string;
   rut: string;
   address: string;
@@ -126,12 +126,67 @@ export interface Provider {
   contactName: string;
   notes: string;
   isActive: boolean;
-  createdAt?: string;
+  createdAt: string;
+}
+
+export interface Debt {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  patient?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  amount: number;
+  remainingAmount: number;
+  paidAmount: number;
+  reason: string;
+  appointmentId?: string;
+  notes?: string;
+  status: 'PENDING' | 'PARTIAL' | 'PAID';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfessionalNote {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  patient?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  appointmentId?: string;
+  professionalId: string;
+  professional?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  title: string;
+  content: string;
+  tags: string[];
+  attachments: Attachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Attachment {
+  id: string;
+  noteId: string;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  description: string;
+  uploadedBy: string;
+  createdAt: string;
 }
 
 export interface Appointment {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   patientId: string;
   patient: {
     id: string;
@@ -156,14 +211,14 @@ export interface Appointment {
   notes?: string;
   notificationSent: boolean;
   reminderSent: boolean;
-  createdAt?: string;
+  createdAt: string;
 }
 
 export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'CHECK' | 'OTHER';
 
 export interface Payment {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   patientId: string;
   patient: {
     id: string;
@@ -196,7 +251,7 @@ export interface Debt {
 
 export interface Notification {
   id: string;
-  clinicId?: string;
+  clinicId: string;
   patientId: string;
   patient: {
     firstName: string;
