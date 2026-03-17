@@ -36,9 +36,9 @@ export function AdminClinics() {
     website: '',
     primaryColor: '#0ea5e9',
     secondaryColor: '#6366f1',
-    clientType: 'patient' as const,
+    clientType: 'patient' as const as any,
     clientTypeLabel: '',
-    professionalType: 'professional' as const,
+    professionalType: 'professional' as const as any,
     professionalTypeLabel: '',
     countryCode: '+598',
   });
@@ -188,9 +188,9 @@ export function AdminClinics() {
       website: '',
       primaryColor: clinic.primaryColor,
       secondaryColor: clinic.secondaryColor,
-      clientType: clinic.clientType || 'patient',
+      clientType: clinic.clientType || 'patient' as any,
       clientTypeLabel: clinic.clientTypeLabel || '',
-      professionalType: clinic.professionalType || 'professional',
+      professionalType: clinic.professionalType || 'professional' as any,
       professionalTypeLabel: clinic.professionalTypeLabel || '',
       countryCode: clinic.countryCode || '+598',
     });
@@ -342,7 +342,7 @@ export function AdminClinics() {
                   </Label>
                   <Select
                     value={formData.clientType}
-                    onValueChange={(v) => setFormData({ ...formData, clientType: v as any })}
+                    onValueChange={(v) => setFormData({ ...formData, clientType: v as any })} as any
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -377,7 +377,7 @@ export function AdminClinics() {
                   </Label>
                   <Select
                     value={formData.professionalType}
-                    onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })}
+                    onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })} as any
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -735,7 +735,7 @@ export function AdminClinics() {
                 <Label htmlFor="edit-clientType">Tipo de cliente</Label>
                 <Select
                   value={formData.clientType}
-                  onValueChange={(v) => setFormData({ ...formData, clientType: v as any })}
+                  onValueChange={(v) => setFormData({ ...formData, clientType: v as any })} as any
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -764,7 +764,7 @@ export function AdminClinics() {
                 <Label htmlFor="edit-professionalType">Tipo de profesional</Label>
                 <Select
                   value={formData.professionalType}
-                  onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })}
+                  onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })} as any
                 >
                   <SelectTrigger>
                     <SelectValue />
