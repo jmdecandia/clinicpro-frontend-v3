@@ -322,7 +322,7 @@ export function AdminClinics() {
 
                 <div className="space-y-2">
                   <Label htmlFor="clientType" className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
+                    <UserIcon className="h-4 w-4" />
                     Tipo de cliente
                   </Label>
                   <Select
@@ -500,7 +500,7 @@ export function AdminClinics() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-muted-foreground" />
+                        <UserIcon className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">
                           {clinic.clientTypeLabel || 
                             CLIENT_TYPES.find(t => t.value === clinic.clientType)?.label.split('(')[0].trim() || 

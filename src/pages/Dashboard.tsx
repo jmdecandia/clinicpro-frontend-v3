@@ -75,7 +75,7 @@ export function Dashboard() {
   
   // Diálogo de gestión de deuda
   const [isDebtDialogOpen, setIsDebtDialogOpen] = useState(false);
-  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [selectedDebt, setSelectedDebt] = useState<DashboardDebt | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [paymentNotes, setPaymentNotes] = useState('');
