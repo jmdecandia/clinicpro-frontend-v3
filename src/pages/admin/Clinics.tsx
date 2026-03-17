@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Building2, Plus, Search, Edit2, Users, CheckCircle2, XCircle, Palette, User } from 'lucide-react';
+import { Building2, Plus, Search, Edit2, Users, CheckCircle2, XCircle, Palette, User as UserIcon } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { clinicApi, userApi } from '@/services/api';
-import type { Clinic, User } from '@/types/api';
+import type { Clinic, User as ClinicUser } from '@/types/api';
 
 export function AdminClinics() {
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -24,7 +24,7 @@ export function AdminClinics() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
-  const [clinicUsers, setClinicUsers] = useState<User[]>([]);
+  const [clinicUsers, setClinicUsers] = useState<ClinicUser[]>([]);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -36,7 +36,7 @@ export function AdminClinics() {
     website: '',
     primaryColor: '#0ea5e9',
     secondaryColor: '#6366f1',
-    clientType: 'patient' as const,
+    clientType: 'patient' as 'patient' | 'client' | 'customer' | 'guest' | 'student' | 'member',
     clientTypeLabel: '',
     countryCode: '+34',
   });
@@ -106,7 +106,7 @@ export function AdminClinics() {
         website: '',
         primaryColor: '#0ea5e9',
         secondaryColor: '#6366f1',
-        clientType: 'patient',
+        clientType: 'patient' as 'patient' | 'client' | 'customer' | 'guest' | 'student' | 'member',
         clientTypeLabel: '',
         countryCode: '+34',
       });

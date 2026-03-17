@@ -163,7 +163,7 @@ export function Dashboard() {
     }
   };
 
-  const openDebtDialog = (debt: Debt) => {
+  const openDebtDialog = (debt: DashboardDebt) => {
     setSelectedDebt(debt);
     setPaymentAmount(debt.remainingAmount?.toString() || '');
     setPaymentMethod('CASH');

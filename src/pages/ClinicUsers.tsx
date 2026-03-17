@@ -6,13 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Users, Plus, Search, Edit2, CheckCircle2, XCircle, User, Shield } from 'lucide-react';
+import { Users, Plus, Search, Edit2, CheckCircle2, XCircle, User } from 'lucide-react';
 import { userApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { User as UserType } from '@/types/api';
 
 export function ClinicUsers() {
-  const { user, clinic } = useAuth();
+  const { clinic } = useAuth();
   const [users, setUsers] = useState<UserType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
