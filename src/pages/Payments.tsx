@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,6 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Search,
-  AlertCircle,
 } from 'lucide-react';
 import { paymentApi, patientApi, providerApi, debtApi } from '@/services/api';
 import type { Payment, Patient, Provider, Debt } from '@/types/api';
@@ -78,6 +77,7 @@ export function Payments() {
   });
   const [loading, setLoading] = useState(true);
   const [searchPatient, setSearchPatient] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAddExpenseDialogOpen, setIsAddExpenseDialogOpen] = useState(false);
@@ -137,8 +137,8 @@ export function Payments() {
       ]);
       setPayments(paymentsRes.data.data || []);
       setPatients(patientsRes.data.data || []);
-      setProviders((providersRes.data || []) as any);
-      setDebts((debtsRes.data.debts || []) as any);
+      setProviders(providersRes.data || []);
+      setDebts(debtsRes.data.debts || []);
       setSummary(summaryRes.data);
     } catch (error) {
       console.error('Error loading payments data:', error);
@@ -178,6 +178,13 @@ export function Payments() {
     setDebtPaymentMethod('CASH');
     setIsDebtPaymentDialogOpen(true);
   };
+
+  // Mantener el foco en el input de búsqueda
+  useEffect(() => {
+    if (searchInputRef.current && isAddDialogOpen) {
+      searchInputRef.current.focus();
+    }
+  }, [searchPatient, isAddDialogOpen]);
 
   const handleAddPayment = async () => {
     try {
@@ -420,6 +427,7 @@ export function Payments() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
+                    ref={searchInputRef}
                     placeholder="Escribe nombre, email o teléfono..."
                     value={searchPatient}
                     onChange={(e) => setSearchPatient(e.target.value)}

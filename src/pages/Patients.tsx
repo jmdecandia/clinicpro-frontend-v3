@@ -253,15 +253,6 @@ export function Patients() {
         />
       </div>
       <div className="space-y-2 sm:col-span-2">
-        <Label htmlFor="allergies">Alergias</Label>
-        <Input
-          id="allergies"
-          value={formData.allergies}
-          onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
-          placeholder="Alergias conocidas"
-        />
-      </div>
-      <div className="space-y-2 sm:col-span-2">
         <Label htmlFor="medicalHistory">Historial Médico</Label>
         <textarea
           id="medicalHistory"
@@ -381,15 +372,6 @@ export function Patients() {
                             <p className="font-medium text-slate-900">
                               {patient.firstName} {patient.lastName}
                             </p>
-                            {patient.allergies && (
-                              <Badge
-                                variant="outline"
-                                className="text-amber-600 border-amber-200 bg-amber-50 text-xs mt-1"
-                              >
-                                <AlertTriangle className="h-3 w-3 mr-1" />
-                                Alergias
-                              </Badge>
-                            )}
                           </div>
                         </div>
                       </TableCell>

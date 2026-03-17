@@ -42,26 +42,11 @@ import {
 } from 'lucide-react';
 import { dashboardApi, appointmentApi, paymentApi, debtApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { DashboardData, Appointment } from '@/types/api';
+import type { DashboardData, Appointment, Debt } from '@/types/api';
 import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-type DashboardDebt = {
-  id: string;
-  patientId: string;
-  patient?: {
-    firstName: string;
-    lastName: string;
-  };
-  amount: number;
-  remainingAmount: number;
-  paidAmount: number;
-  reason: string;
-  status: 'PENDING' | 'PARTIAL' | 'PAID';
-  createdAt: string;
-};
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -71,11 +56,11 @@ export function Dashboard() {
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
   const [weeklyRevenue, setWeeklyRevenue] = useState<any[]>([]);
-  const [debts, setDebts] = useState<{ debts: DashboardDebt[]; summary: any } | null>(null);
+  const [debts, setDebts] = useState<{ debts: Debt[]; summary: any } | null>(null);
   
   // Diálogo de gestión de deuda
   const [isDebtDialogOpen, setIsDebtDialogOpen] = useState(false);
-  const [selectedDebt, setSelectedDebt] = useState<DashboardDebt | null>(null);
+  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [paymentNotes, setPaymentNotes] = useState('');
@@ -163,7 +148,7 @@ export function Dashboard() {
     }
   };
 
-  const openDebtDialog = (debt: DashboardDebt) => {
+  const openDebtDialog = (debt: Debt) => {
     setSelectedDebt(debt);
     setPaymentAmount(debt.remainingAmount?.toString() || '');
     setPaymentMethod('CASH');
@@ -547,19 +532,27 @@ export function Dashboard() {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="p-2 bg-slate-50 rounded">
                     <p className="text-lg font-semibold">{data.analytics.occupancy.workingDays}</p>
                     <p className="text-xs text-slate-500">Días hábiles</p>
                   </div>
                   <div className="p-2 bg-slate-50 rounded">
-                    <p className="text-lg font-semibold">{data.analytics.occupancy.totalSlots}</p>
-                    <p className="text-xs text-slate-500">Cupos totales</p>
+                    <p className="text-lg font-semibold">{Math.round(data.analytics.occupancy.totalSlots)}</p>
+                    <p className="text-xs text-slate-500">Cupos disponibles</p>
                   </div>
-                  <div className="p-2 bg-slate-50 rounded">
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="p-2 bg-purple-50 rounded">
                     <p className="text-lg font-semibold text-purple-600">{data.analytics.occupancy.occupiedSlots}</p>
                     <p className="text-xs text-slate-500">Cupos usados</p>
                   </div>
+                  {data.analytics.occupancy.blockedHours > 0 && (
+                    <div className="p-2 bg-orange-50 rounded">
+                      <p className="text-lg font-semibold text-orange-600">{Math.round(data.analytics.occupancy.blockedHours)}h</p>
+                      <p className="text-xs text-slate-500">Horas bloqueadas</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -742,7 +735,7 @@ export function Dashboard() {
                     {patient.firstName} {patient.lastName}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {patient.createdAt ? format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es }) : '-'}
+                    {format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es })}
                   </p>
                 </div>
               </div>

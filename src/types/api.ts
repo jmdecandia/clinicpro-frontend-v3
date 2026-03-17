@@ -30,6 +30,8 @@ export interface Clinic {
   whatsappEnabled: boolean;
   clientType: 'patient' | 'client' | 'customer' | 'guest' | 'student' | 'member';
   clientTypeLabel: string;
+  professionalType: 'professional' | 'doctor' | 'stylist' | 'therapist' | 'trainer' | 'consultant';
+  professionalTypeLabel: string;
   countryCode: string;
   settings?: ClinicSettings;
   createdAt: string;
@@ -307,6 +309,7 @@ export interface OccupancyData {
   totalSlots: number;
   occupiedSlots: number;
   workingDays: number;
+  blockedHours: number;
 }
 
 export interface DashboardAnalytics {

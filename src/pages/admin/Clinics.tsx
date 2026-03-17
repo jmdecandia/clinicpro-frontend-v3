@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Building2, Plus, Search, Edit2, Users, CheckCircle2, XCircle, Palette, User as UserIcon } from 'lucide-react';
+import { Building2, Plus, Search, Edit2, Users, CheckCircle2, XCircle, Palette, User } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { clinicApi, userApi } from '@/services/api';
-import type { Clinic, User as ClinicUser } from '@/types/api';
+import type { Clinic, User } from '@/types/api';
 
 export function AdminClinics() {
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -24,7 +24,7 @@ export function AdminClinics() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
-  const [clinicUsers, setClinicUsers] = useState<ClinicUser[]>([]);
+  const [clinicUsers, setClinicUsers] = useState<User[]>([]);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -36,9 +36,11 @@ export function AdminClinics() {
     website: '',
     primaryColor: '#0ea5e9',
     secondaryColor: '#6366f1',
-    clientType: 'patient' as 'patient' | 'client' | 'customer' | 'guest' | 'student' | 'member',
+    clientType: 'patient' as const,
     clientTypeLabel: '',
-    countryCode: '+34',
+    professionalType: 'professional' as const,
+    professionalTypeLabel: '',
+    countryCode: '+598',
   });
 
   const CLIENT_TYPES = [
@@ -50,14 +52,23 @@ export function AdminClinics() {
     { value: 'member', label: 'Miembro (Gimnasio, club)' },
   ];
 
+  const PROFESSIONAL_TYPES = [
+    { value: 'professional', label: 'Profesional (Genérico)' },
+    { value: 'doctor', label: 'Doctor (Médico, dentista)' },
+    { value: 'stylist', label: 'Estilista (Peluquería)' },
+    { value: 'therapist', label: 'Terapeuta (Spa, masajes)' },
+    { value: 'trainer', label: 'Entrenador (Gimnasio)' },
+    { value: 'consultant', label: 'Consultor (Asesoría)' },
+  ];
+
   const COUNTRY_CODES = [
-    { value: '+34', label: '🇪🇸 España (+34)' },
     { value: '+598', label: '🇺🇾 Uruguay (+598)' },
     { value: '+54', label: '🇦🇷 Argentina (+54)' },
     { value: '+56', label: '🇨🇱 Chile (+56)' },
     { value: '+57', label: '🇨🇴 Colombia (+57)' },
     { value: '+52', label: '🇲🇽 México (+52)' },
     { value: '+51', label: '🇵🇪 Perú (+51)' },
+    { value: '+34', label: '🇪🇸 España (+34)' },
     { value: '+1', label: '🇺🇸 USA/Canadá (+1)' },
     { value: '+55', label: '🇧🇷 Brasil (+55)' },
   ];
@@ -106,9 +117,11 @@ export function AdminClinics() {
         website: '',
         primaryColor: '#0ea5e9',
         secondaryColor: '#6366f1',
-        clientType: 'patient' as 'patient' | 'client' | 'customer' | 'guest' | 'student' | 'member',
+        clientType: 'patient',
         clientTypeLabel: '',
-        countryCode: '+34',
+        professionalType: 'professional',
+        professionalTypeLabel: '',
+        countryCode: '+598',
       });
       fetchClinics();
     } catch (error) {
@@ -177,7 +190,9 @@ export function AdminClinics() {
       secondaryColor: clinic.secondaryColor,
       clientType: clinic.clientType || 'patient',
       clientTypeLabel: clinic.clientTypeLabel || '',
-      countryCode: clinic.countryCode || '+34',
+      professionalType: clinic.professionalType || 'professional',
+      professionalTypeLabel: clinic.professionalTypeLabel || '',
+      countryCode: clinic.countryCode || '+598',
     });
     setIsEditDialogOpen(true);
   };
@@ -322,7 +337,7 @@ export function AdminClinics() {
 
                 <div className="space-y-2">
                   <Label htmlFor="clientType" className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4" />
+                    <User className="h-4 w-4" />
                     Tipo de cliente
                   </Label>
                   <Select
@@ -349,6 +364,41 @@ export function AdminClinics() {
                     value={formData.clientTypeLabel}
                     onChange={(e) => setFormData({ ...formData, clientTypeLabel: e.target.value })}
                     placeholder="Ej: Paciente, Cliente, Huésped..."
+                  />
+                  <p className="text-xs text-slate-500">
+                    Si se deja vacío, se usará la etiqueta por defecto
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="professionalType" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Tipo de profesional
+                  </Label>
+                  <Select
+                    value={formData.professionalType}
+                    onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROFESSIONAL_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="professionalTypeLabel">Etiqueta personalizada (opcional)</Label>
+                  <Input
+                    id="professionalTypeLabel"
+                    value={formData.professionalTypeLabel}
+                    onChange={(e) => setFormData({ ...formData, professionalTypeLabel: e.target.value })}
+                    placeholder="Ej: Doctor, Estilista, Terapeuta..."
                   />
                   <p className="text-xs text-slate-500">
                     Si se deja vacío, se usará la etiqueta por defecto
@@ -500,14 +550,22 @@ export function AdminClinics() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <UserIcon className="h-3 w-3 text-muted-foreground" />
+                        <User className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">
                           {clinic.clientTypeLabel || 
                             CLIENT_TYPES.find(t => t.value === clinic.clientType)?.label.split('(')[0].trim() || 
                             'Paciente'}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground">{clinic.countryCode}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <Users className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {clinic.professionalTypeLabel || 
+                            PROFESSIONAL_TYPES.find(t => t.value === clinic.professionalType)?.label.split('(')[0].trim() || 
+                            'Profesional'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{clinic.countryCode}</p>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -699,6 +757,35 @@ export function AdminClinics() {
                   value={formData.clientTypeLabel}
                   onChange={(e) => setFormData({ ...formData, clientTypeLabel: e.target.value })}
                   placeholder="Ej: Paciente, Cliente..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-professionalType">Tipo de profesional</Label>
+                <Select
+                  value={formData.professionalType}
+                  onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROFESSIONAL_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-professionalTypeLabel">Etiqueta personalizada</Label>
+                <Input
+                  id="edit-professionalTypeLabel"
+                  value={formData.professionalTypeLabel}
+                  onChange={(e) => setFormData({ ...formData, professionalTypeLabel: e.target.value })}
+                  placeholder="Ej: Doctor, Estilista..."
                 />
               </div>
 

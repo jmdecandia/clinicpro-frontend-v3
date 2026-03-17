@@ -6,13 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Users, Plus, Search, Edit2, CheckCircle2, XCircle, User } from 'lucide-react';
+import { Users, Plus, Search, Edit2, CheckCircle2, XCircle, User, Shield } from 'lucide-react';
 import { userApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { User as UserType } from '@/types/api';
 
 export function ClinicUsers() {
-  const { clinic } = useAuth();
+  const { user, clinic } = useAuth();
   const [users, setUsers] = useState<UserType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,7 +25,6 @@ export function ClinicUsers() {
     email: '',
     password: '',
     role: 'STAFF' as const,
-    phone: '',
   });
 
   const fetchUsers = async () => {
@@ -71,7 +70,6 @@ export function ClinicUsers() {
         email: '',
         password: '',
         role: 'STAFF',
-        phone: '',
       });
       fetchUsers();
     } catch (error) {
@@ -90,7 +88,6 @@ export function ClinicUsers() {
         name: formData.name,
         email: formData.email,
         role: formData.role,
-        phone: formData.phone,
         ...(formData.password && { password: formData.password }),
       };
 
@@ -129,7 +126,6 @@ export function ClinicUsers() {
       email: user.email,
       password: '',
       role: user.role as 'STAFF',
-      phone: user.phone || '',
     });
     setIsEditDialogOpen(true);
   };
@@ -212,22 +208,6 @@ export function ClinicUsers() {
                     placeholder="••••••••"
                     required
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <div className="flex gap-2">
-                    <span className="flex items-center px-3 bg-slate-100 rounded-md text-sm text-slate-600">
-                      {clinic?.countryCode || '+34'}
-                    </span>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="600 000 000"
-                      className="flex-1"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -416,21 +396,6 @@ export function ClinicUsers() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-phone">Teléfono</Label>
-                <div className="flex gap-2">
-                  <span className="flex items-center px-3 bg-slate-100 rounded-md text-sm text-slate-600">
-                    {clinic?.countryCode || '+34'}
-                  </span>
-                  <Input
-                    id="edit-phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="flex-1"
-                  />
-                </div>
               </div>
             </div>
 

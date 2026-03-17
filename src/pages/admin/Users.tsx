@@ -27,7 +27,6 @@ export function AdminUsers() {
     password: '',
     role: 'STAFF' as 'CLINIC_ADMIN' | 'STAFF',
     clinicId: '',
-    phone: '',
   });
 
   const fetchUsers = async () => {
@@ -86,7 +85,6 @@ export function AdminUsers() {
         password: '',
         role: 'STAFF',
         clinicId: '',
-        phone: '',
       });
       fetchUsers();
     } catch (error) {
@@ -106,7 +104,6 @@ export function AdminUsers() {
         email: formData.email,
         role: formData.role,
         clinicId: formData.clinicId,
-        phone: formData.phone,
         ...(formData.password && { password: formData.password }),
       };
 
@@ -146,7 +143,6 @@ export function AdminUsers() {
       password: '',
       role: user.role as 'CLINIC_ADMIN' | 'STAFF',
       clinicId: user.clinicId || '',
-      phone: user.phone || '',
     });
     setIsEditDialogOpen(true);
   };
@@ -232,16 +228,6 @@ export function AdminUsers() {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="••••••••"
                     required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+34 600 000 000"
                   />
                 </div>
 
@@ -501,15 +487,6 @@ export function AdminUsers() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-phone">Teléfono</Label>
-                <Input
-                  id="edit-phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
               </div>
 
