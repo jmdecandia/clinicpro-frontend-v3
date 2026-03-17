@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Building2, Plus, Search, Edit2, Users, CheckCircle2, XCircle, Palette, User } from 'lucide-react';
+import { Building2, Plus, Search, Edit2, Users, CheckCircle2, XCircle, Palette, User as UserIcon } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -117,9 +117,9 @@ export function AdminClinics() {
         website: '',
         primaryColor: '#0ea5e9',
         secondaryColor: '#6366f1',
-        clientType: 'patient',
+        clientType: 'patient' as any,
         clientTypeLabel: '',
-        professionalType: 'professional',
+        professionalType: 'professional' as any,
         professionalTypeLabel: '',
         countryCode: '+598',
       });
@@ -337,7 +337,7 @@ export function AdminClinics() {
 
                 <div className="space-y-2">
                   <Label htmlFor="clientType" className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
+                    <UserIcon className="h-4 w-4" />
                     Tipo de cliente
                   </Label>
                   <Select
@@ -550,7 +550,7 @@ export function AdminClinics() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-muted-foreground" />
+                        <UserIcon className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">
                           {clinic.clientTypeLabel || 
                             CLIENT_TYPES.find(t => t.value === clinic.clientType)?.label.split('(')[0].trim() || 

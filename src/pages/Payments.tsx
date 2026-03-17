@@ -48,6 +48,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Search,
+  AlertCircle,
 } from 'lucide-react';
 import { paymentApi, patientApi, providerApi, debtApi } from '@/services/api';
 import type { Payment, Patient, Provider, Debt } from '@/types/api';
@@ -66,7 +67,7 @@ const PAYMENT_METHODS = [
 export function Payments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providers, setProviders] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({
     today: 0,
     month: 0,
@@ -86,7 +87,7 @@ export function Payments() {
   const [isAddProviderOpen, setIsAddProviderOpen] = useState(false);
   const [isDebtPaymentDialogOpen, setIsDebtPaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [debts, setDebts] = useState<Debt[]>([]);
+  const [debts, setDebts] = useState<any[]>([]);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [debtPaymentAmount, setDebtPaymentAmount] = useState('');
   const [debtPaymentMethod, setDebtPaymentMethod] = useState('CASH');

@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import { dashboardApi, appointmentApi, paymentApi, debtApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { DashboardData, Appointment, Debt } from '@/types/api';
+import type { DashboardData, Appointment } from '@/types/api';
 import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -56,11 +56,11 @@ export function Dashboard() {
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
   const [weeklyRevenue, setWeeklyRevenue] = useState<any[]>([]);
-  const [debts, setDebts] = useState<{ debts: Debt[]; summary: any } | null>(null);
+  const [debts, setDebts] = useState<{ debts: any[]; summary: any } | null>(null);
   
   // Diálogo de gestión de deuda
   const [isDebtDialogOpen, setIsDebtDialogOpen] = useState(false);
-  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [selectedDebt, setSelectedDebt] = useState<any | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [paymentNotes, setPaymentNotes] = useState('');
@@ -148,7 +148,7 @@ export function Dashboard() {
     }
   };
 
-  const openDebtDialog = (debt: Debt) => {
+  const openDebtDialog = (debt: any) => {
     setSelectedDebt(debt);
     setPaymentAmount(debt.remainingAmount?.toString() || '');
     setPaymentMethod('CASH');
@@ -735,7 +735,7 @@ export function Dashboard() {
                     {patient.firstName} {patient.lastName}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es })}
+                    {patient.createdAt ? format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es }) : '-'}
                   </p>
                 </div>
               </div>
