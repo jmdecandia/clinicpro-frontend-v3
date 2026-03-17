@@ -342,7 +342,7 @@ export function AdminClinics() {
                   </Label>
                   <Select
                     value={formData.clientType}
-                    onValueChange={(v) => setFormData({ ...formData, clientType: v as any })} as any
+                    onValueChange={(v) => setFormData({ ...formData, clientType: v as any })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -377,7 +377,7 @@ export function AdminClinics() {
                   </Label>
                   <Select
                     value={formData.professionalType}
-                    onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })} as any
+                    onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -735,7 +735,7 @@ export function AdminClinics() {
                 <Label htmlFor="edit-clientType">Tipo de cliente</Label>
                 <Select
                   value={formData.clientType}
-                  onValueChange={(v) => setFormData({ ...formData, clientType: v as any })} as any
+                  onValueChange={(v) => setFormData({ ...formData, clientType: v as any })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -764,7 +764,7 @@ export function AdminClinics() {
                 <Label htmlFor="edit-professionalType">Tipo de profesional</Label>
                 <Select
                   value={formData.professionalType}
-                  onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })} as any
+                  onValueChange={(v) => setFormData({ ...formData, professionalType: v as any })}
                 >
                   <SelectTrigger>
                     <SelectValue />
