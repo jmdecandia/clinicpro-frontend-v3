@@ -6,7 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Building2, Plus, Search, Edit2, Users, CheckCircle2, XCircle, Palette } from 'lucide-react';
+import { Building2, Plus, Search, Edit2, Users, CheckCircle2, XCircle, Palette, User } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { clinicApi, userApi } from '@/services/api';
 import type { Clinic, User } from '@/types/api';
 
@@ -29,7 +36,31 @@ export function AdminClinics() {
     website: '',
     primaryColor: '#0ea5e9',
     secondaryColor: '#6366f1',
+    clientType: 'patient' as const,
+    clientTypeLabel: '',
+    countryCode: '+34',
   });
+
+  const CLIENT_TYPES = [
+    { value: 'patient', label: 'Paciente (Clínica médica/dental)' },
+    { value: 'client', label: 'Cliente (Estética, peluquería)' },
+    { value: 'customer', label: 'Cliente (Tienda, servicios)' },
+    { value: 'guest', label: 'Huésped (Hotel, alojamiento)' },
+    { value: 'student', label: 'Estudiante (Academia, curso)' },
+    { value: 'member', label: 'Miembro (Gimnasio, club)' },
+  ];
+
+  const COUNTRY_CODES = [
+    { value: '+34', label: '🇪🇸 España (+34)' },
+    { value: '+598', label: '🇺🇾 Uruguay (+598)' },
+    { value: '+54', label: '🇦🇷 Argentina (+54)' },
+    { value: '+56', label: '🇨🇱 Chile (+56)' },
+    { value: '+57', label: '🇨🇴 Colombia (+57)' },
+    { value: '+52', label: '🇲🇽 México (+52)' },
+    { value: '+51', label: '🇵🇪 Perú (+51)' },
+    { value: '+1', label: '🇺🇸 USA/Canadá (+1)' },
+    { value: '+55', label: '🇧🇷 Brasil (+55)' },
+  ];
 
   const fetchClinics = async () => {
     try {
@@ -75,6 +106,9 @@ export function AdminClinics() {
         website: '',
         primaryColor: '#0ea5e9',
         secondaryColor: '#6366f1',
+        clientType: 'patient',
+        clientTypeLabel: '',
+        countryCode: '+34',
       });
       fetchClinics();
     } catch (error) {
@@ -141,6 +175,9 @@ export function AdminClinics() {
       website: '',
       primaryColor: clinic.primaryColor,
       secondaryColor: clinic.secondaryColor,
+      clientType: clinic.clientType || 'patient',
+      clientTypeLabel: clinic.clientTypeLabel || '',
+      countryCode: clinic.countryCode || '+34',
     });
     setIsEditDialogOpen(true);
   };
@@ -282,6 +319,60 @@ export function AdminClinics() {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="clientType" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Tipo de cliente
+                  </Label>
+                  <Select
+                    value={formData.clientType}
+                    onValueChange={(v) => setFormData({ ...formData, clientType: v as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CLIENT_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="clientTypeLabel">Etiqueta personalizada (opcional)</Label>
+                  <Input
+                    id="clientTypeLabel"
+                    value={formData.clientTypeLabel}
+                    onChange={(e) => setFormData({ ...formData, clientTypeLabel: e.target.value })}
+                    placeholder="Ej: Paciente, Cliente, Huésped..."
+                  />
+                  <p className="text-xs text-slate-500">
+                    Si se deja vacío, se usará la etiqueta por defecto
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="countryCode">País / Prefijo telefónico</Label>
+                  <Select
+                    value={formData.countryCode}
+                    onValueChange={(v) => setFormData({ ...formData, countryCode: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRY_CODES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <DialogFooter>
@@ -365,6 +456,7 @@ export function AdminClinics() {
               <TableRow>
                 <TableHead>Clínica</TableHead>
                 <TableHead>Contacto</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Colores</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -373,13 +465,13 @@ export function AdminClinics() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : clinics.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     No se encontraron clínicas
                   </TableCell>
                 </TableRow>
@@ -405,6 +497,17 @@ export function AdminClinics() {
                         {clinic.email && <p>{clinic.email}</p>}
                         {clinic.phone && <p className="text-muted-foreground">{clinic.phone}</p>}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm">
+                          {clinic.clientTypeLabel || 
+                            CLIENT_TYPES.find(t => t.value === clinic.clientType)?.label.split('(')[0].trim() || 
+                            'Paciente'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{clinic.countryCode}</p>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -568,6 +671,54 @@ export function AdminClinics() {
                     className="flex-1"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-clientType">Tipo de cliente</Label>
+                <Select
+                  value={formData.clientType}
+                  onValueChange={(v) => setFormData({ ...formData, clientType: v as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLIENT_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-clientTypeLabel">Etiqueta personalizada</Label>
+                <Input
+                  id="edit-clientTypeLabel"
+                  value={formData.clientTypeLabel}
+                  onChange={(e) => setFormData({ ...formData, clientTypeLabel: e.target.value })}
+                  placeholder="Ej: Paciente, Cliente..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-countryCode">País / Prefijo telefónico</Label>
+                <Select
+                  value={formData.countryCode}
+                  onValueChange={(v) => setFormData({ ...formData, countryCode: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRY_CODES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

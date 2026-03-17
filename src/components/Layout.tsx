@@ -24,6 +24,7 @@ import {
   LogOut,
   ChevronDown,
   LogOut as LogOutIcon,
+  UserCog,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -36,6 +37,7 @@ const adminMenuItems = [
   { id: 'appointments', label: 'Agenda', icon: CalendarDays, path: '/appointments' },
   { id: 'payments', label: 'Pagos', icon: CreditCard, path: '/payments' },
   { id: 'notifications', label: 'Notificaciones', icon: Bell, path: '/notifications' },
+  { id: 'clinic-users', label: 'Usuarios', icon: UserCog, path: '/clinic/users' },
 ];
 
 // Menú para Staff (NO ve Dashboard ni facturación total)

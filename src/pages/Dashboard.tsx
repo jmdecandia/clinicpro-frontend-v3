@@ -5,6 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import {
   Users,
@@ -20,29 +36,17 @@ import {
   TrendingDown,
   Calendar,
   CreditCard,
+  Wallet,
+  CheckCircle,
+  X,
 } from 'lucide-react';
 import { dashboardApi, appointmentApi, paymentApi, debtApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { DashboardData, Appointment } from '@/types/api';
+import type { DashboardData, Appointment, Debt } from '@/types/api';
 import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-type DashboardDebt = {
-  id: string;
-  patientId: string;
-  patient?: {
-    firstName: string;
-    lastName: string;
-  };
-  amount: number;
-  remainingAmount: number;
-  paidAmount: number;
-  reason: string;
-  status: 'PENDING' | 'PARTIAL' | 'PAID';
-  createdAt: string;
-};
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -52,7 +56,22 @@ export function Dashboard() {
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
   const [weeklyRevenue, setWeeklyRevenue] = useState<any[]>([]);
-  const [debts, setDebts] = useState<{ debts: DashboardDebt[]; summary: any } | null>(null);
+  const [debts, setDebts] = useState<{ debts: Debt[]; summary: any } | null>(null);
+  
+  // Diálogo de gestión de deuda
+  const [isDebtDialogOpen, setIsDebtDialogOpen] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  
+  const PAYMENT_METHODS = [
+    { value: 'CASH', label: 'Efectivo' },
+    { value: 'CARD', label: 'Tarjeta' },
+    { value: 'TRANSFER', label: 'Transferencia' },
+    { value: 'CHECK', label: 'Cheque' },
+    { value: 'OTHER', label: 'Otro' },
+  ];
 
   useEffect(() => {
     loadDashboardData();
@@ -100,6 +119,41 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error loading debts:', error);
     }
+  };
+
+  const handleDebtPayment = async () => {
+    if (!selectedDebt || !paymentAmount) return;
+    
+    try {
+      const amount = parseFloat(paymentAmount);
+      if (amount <= 0) {
+        toast.error('El monto debe ser mayor a 0');
+        return;
+      }
+      
+      await debtApi.addPayment(selectedDebt.id, {
+        amount,
+        method: paymentMethod,
+        notes: paymentNotes,
+      });
+      
+      toast.success('Pago registrado exitosamente');
+      setIsDebtDialogOpen(false);
+      setPaymentAmount('');
+      setPaymentNotes('');
+      loadDebts();
+      loadPaymentSummary();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Error al registrar pago');
+    }
+  };
+
+  const openDebtDialog = (debt: Debt) => {
+    setSelectedDebt(debt);
+    setPaymentAmount(debt.remainingAmount?.toString() || '');
+    setPaymentMethod('CASH');
+    setPaymentNotes('');
+    setIsDebtDialogOpen(true);
   };
 
   const generateWeeklyRevenue = () => {
@@ -163,6 +217,13 @@ export function Dashboard() {
       icon: TrendingUp,
       color: 'from-green-500 to-green-600',
       onClick: () => navigate('/payments'),
+    },
+    {
+      title: '% Ocupación',
+      value: `${data?.stats.occupancyRate || 0}%`,
+      icon: CalendarDays,
+      color: 'from-purple-500 to-purple-600',
+      onClick: () => navigate('/appointments'),
     },
   ];
 
@@ -353,6 +414,144 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Métricas Analíticas */}
+      {data?.analytics && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Ingresos por Profesional */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <User className="h-5 w-5 text-blue-500" />
+                Ingresos por Profesional
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                {data.analytics.revenueByProfessional.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">
+                    <User className="h-12 w-12 mx-auto mb-2" />
+                    <p>No hay datos de ingresos por profesional</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {data.analytics.revenueByProfessional.map((prof) => (
+                      <div key={prof.professionalId} className="p-3 rounded-lg bg-slate-50">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-slate-900">{prof.professionalName}</p>
+                            <p className="text-xs text-slate-500">{prof.specialty || 'Sin especialidad'}</p>
+                            <p className="text-xs text-slate-400">{prof.appointmentsCount} atenciones</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-emerald-600">${prof.revenue.toFixed(2)}</p>
+                            <p className="text-xs text-slate-500">Generado</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex gap-4 text-xs">
+                          <span className="text-emerald-600">Recibido: ${prof.received.toFixed(2)}</span>
+                          {prof.pending > 0 && (
+                            <span className="text-red-500">Pendiente: ${prof.pending.toFixed(2)}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Ingresos por Servicio */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Stethoscope className="h-5 w-5 text-cyan-500" />
+                Ingresos por Servicio
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                {data.analytics.revenueByService.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">
+                    <Stethoscope className="h-12 w-12 mx-auto mb-2" />
+                    <p>No hay datos de ingresos por servicio</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {data.analytics.revenueByService.map((svc) => (
+                      <div key={svc.serviceId} className="p-3 rounded-lg bg-slate-50">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-medium text-slate-900">{svc.serviceName}</p>
+                            <p className="text-xs text-slate-400">{svc.appointmentsCount} atenciones</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-emerald-600">${svc.revenue.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Ocupación de Agenda */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-purple-500" />
+                Ocupación de Agenda
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-center">
+                  <div className="relative w-32 h-32">
+                    <svg className="w-full h-full" viewBox="0 0 36 36">
+                      <path
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="#e2e8f0"
+                        strokeWidth="3"
+                      />
+                      <path
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="#8b5cf6"
+                        strokeWidth="3"
+                        strokeDasharray={`${data.analytics.occupancy.occupancyRate}, 100`}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-bold text-purple-600">
+                        {data.analytics.occupancy.occupancyRate}%
+                      </span>
+                      <span className="text-xs text-slate-500">Ocupación</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 bg-slate-50 rounded">
+                    <p className="text-lg font-semibold">{data.analytics.occupancy.workingDays}</p>
+                    <p className="text-xs text-slate-500">Días hábiles</p>
+                  </div>
+                  <div className="p-2 bg-slate-50 rounded">
+                    <p className="text-lg font-semibold">{data.analytics.occupancy.totalSlots}</p>
+                    <p className="text-xs text-slate-500">Cupos totales</p>
+                  </div>
+                  <div className="p-2 bg-slate-50 rounded">
+                    <p className="text-lg font-semibold text-purple-600">{data.analytics.occupancy.occupiedSlots}</p>
+                    <p className="text-xs text-slate-500">Cupos usados</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Próximas Citas */}
@@ -528,7 +727,7 @@ export function Dashboard() {
                     {patient.firstName} {patient.lastName}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {patient.createdAt ? format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es }) : '-'}
+                    {format(parseISO(patient.createdAt), 'dd MMM yyyy', { locale: es })}
                   </p>
                 </div>
               </div>
@@ -567,7 +766,7 @@ export function Dashboard() {
                   <div
                     key={debt.id}
                     className="flex items-center justify-between p-4 rounded-lg bg-red-50 border border-red-100 hover:bg-red-100 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/patients?id=${debt.patientId}&view=debt`)}
+                    onClick={() => openDebtDialog(debt)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
@@ -601,6 +800,105 @@ export function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Diálogo de Gestión de Deuda */}
+      <Dialog open={isDebtDialogOpen} onOpenChange={setIsDebtDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-red-500" />
+              Registrar Pago de Deuda
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedDebt && (
+            <div className="space-y-4 py-4">
+              {/* Info del paciente */}
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm text-slate-500">Paciente</p>
+                <p className="font-medium">
+                  {selectedDebt.patient?.firstName} {selectedDebt.patient?.lastName}
+                </p>
+              </div>
+
+              {/* Detalle de la deuda */}
+              <div className="p-4 bg-red-50 rounded-lg border border-red-100">
+                <p className="text-sm text-red-600 mb-1">{selectedDebt.reason}</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-xs text-slate-500">Total deuda</p>
+                    <p className="font-medium">${selectedDebt.amount?.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Pagado</p>
+                    <p className="font-medium text-emerald-600">${selectedDebt.paidAmount?.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Pendiente</p>
+                    <p className="text-lg font-bold text-red-600">${selectedDebt.remainingAmount?.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Formulario de pago */}
+              <div className="space-y-3">
+                <div>
+                  <Label>Monto a pagar *</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={selectedDebt.remainingAmount}
+                    step="0.01"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                
+                <div>
+                  <Label>Método de pago</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Notas (opcional)</Label>
+                  <Input
+                    value={paymentNotes}
+                    onChange={(e) => setPaymentNotes(e.target.value)}
+                    placeholder="Notas sobre el pago"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDebtDialogOpen(false)}>
+              <X className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleDebtPayment}
+              disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Registrar Pago
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

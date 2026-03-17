@@ -28,6 +28,9 @@ export interface Clinic {
   isActive: boolean;
   plan: string;
   whatsappEnabled: boolean;
+  clientType: 'patient' | 'client' | 'customer' | 'guest' | 'student' | 'member';
+  clientTypeLabel: string;
+  countryCode: string;
   settings?: ClinicSettings;
   createdAt: string;
 }
@@ -279,10 +282,42 @@ export interface DashboardStats {
   monthRevenue: number;
   totalRevenue: number;
   totalDebt: number;
+  occupancyRate: number;
+}
+
+export interface RevenueByProfessional {
+  professionalId: string;
+  professionalName: string;
+  specialty?: string;
+  appointmentsCount: number;
+  revenue: number;
+  received: number;
+  pending: number;
+}
+
+export interface RevenueByService {
+  serviceId: string;
+  serviceName: string;
+  appointmentsCount: number;
+  revenue: number;
+}
+
+export interface OccupancyData {
+  occupancyRate: number;
+  totalSlots: number;
+  occupiedSlots: number;
+  workingDays: number;
+}
+
+export interface DashboardAnalytics {
+  revenueByProfessional: RevenueByProfessional[];
+  revenueByService: RevenueByService[];
+  occupancy: OccupancyData;
 }
 
 export interface DashboardData {
   stats: DashboardStats;
+  analytics: DashboardAnalytics;
   recent: {
     patients: Patient[];
     appointments: Appointment[];

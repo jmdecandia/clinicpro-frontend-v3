@@ -15,6 +15,7 @@ import { SuperAdminDashboard } from '@/pages/SuperAdminDashboard';
 import { Professionals } from '@/pages/Professionals';
 import { AdminClinics } from '@/pages/admin/Clinics';
 import { AdminUsers } from '@/pages/admin/Users';
+import { ClinicUsers } from '@/pages/ClinicUsers';
 
 // Componente para redirigir según rol
 function RoleBasedRedirect() {
@@ -80,6 +81,9 @@ function App() {
             
             {/* Perfil - Todos */}
             <Route path="/profile" element={<Profile />} />
+            
+            {/* Gestión de usuarios - Admin de Clínica */}
+            <Route path="/clinic/users" element={<ClinicUsers />} />
             
             {/* Admin - Solo Super Admin */}
             <Route path="/admin/clinics" element={<AdminClinics />} />

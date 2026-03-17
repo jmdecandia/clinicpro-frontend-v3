@@ -22,14 +22,24 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Verificar clínica
+  // Verificar clínica o acceso admin
   const verifyClinic = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
+    const input = clinicInput.toLowerCase().trim();
+    
+    // Si escribe "administrador", ir directo a login de super admin
+    if (input === 'administrador' || input === 'admin') {
+      setClinic(null);
+      setStep('credentials');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const slug = clinicInput.toLowerCase().trim().replace(/\s+/g, '-');
+      const slug = input.replace(/\s+/g, '-');
       const response = await clinicApi.getBySlug(slug);
       setClinic(response.data);
       setStep('credentials');
@@ -37,7 +47,7 @@ export function Login() {
       if (error.code === 'ERR_NETWORK') {
         setError('⚠️ Backend no conectado. Para usar la app: 1) Ejecuta ./start-local.sh o 2) Despliega en Render y actualiza VITE_API_URL en app/.env');
       } else if (error.response?.status === 404) {
-        setError('Clínica no encontrada. Usa "clinica-demo" para probar.');
+        setError('Clínica no encontrada. Usa "clinica-demo" para probar o "administrador" para acceso admin.');
       } else {
         setError('Error al verificar la clínica. Intenta nuevamente.');
       }
@@ -100,7 +110,7 @@ export function Login() {
               <CardHeader>
                 <CardTitle>Selecciona tu Clínica</CardTitle>
                 <CardDescription>
-                  Ingresa el nombre o URL de tu clínica para continuar
+                  Ingresa el nombre de tu clínica o escribe "administrador" para acceso de super admin
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -117,7 +127,7 @@ export function Login() {
                       <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
                         id="clinic"
-                        placeholder="Ej: Mi Clínica"
+                        placeholder="Ej: Mi Clínica o 'administrador'"
                         value={clinicInput}
                         onChange={(e) => setClinicInput(e.target.value)}
                         className="pl-10"
@@ -125,7 +135,9 @@ export function Login() {
                       />
                     </div>
                     <p className="text-xs text-slate-500">
-                      clinicpro.com/{clinicInput.toLowerCase().trim().replace(/\s+/g, '-') || 'tu-clinica'}
+                      {clinicInput.toLowerCase().trim() === 'administrador' 
+                        ? 'Acceso de Super Administrador' 
+                        : `clinicpro.com/${clinicInput.toLowerCase().trim().replace(/\s+/g, '-') || 'tu-clinica'}`}
                     </p>
                   </div>
 

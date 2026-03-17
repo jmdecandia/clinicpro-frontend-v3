@@ -49,8 +49,8 @@ import {
   ArrowUpRight,
   Search,
 } from 'lucide-react';
-import { paymentApi, patientApi, providerApi } from '@/services/api';
-import type { Payment, Patient, Provider } from '@/types/api';
+import { paymentApi, patientApi, providerApi, debtApi } from '@/services/api';
+import type { Payment, Patient, Provider, Debt } from '@/types/api';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -83,7 +83,12 @@ export function Payments() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isManageProvidersOpen, setIsManageProvidersOpen] = useState(false);
   const [isAddProviderOpen, setIsAddProviderOpen] = useState(false);
+  const [isDebtPaymentDialogOpen, setIsDebtPaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [debtPaymentAmount, setDebtPaymentAmount] = useState('');
+  const [debtPaymentMethod, setDebtPaymentMethod] = useState('CASH');
   
   // Formulario de pago (ingreso)
   const [formData, setFormData] = useState({
@@ -122,15 +127,17 @@ export function Payments() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [paymentsRes, patientsRes, summaryRes, providersRes] = await Promise.all([
+      const [paymentsRes, patientsRes, summaryRes, providersRes, debtsRes] = await Promise.all([
         paymentApi.list({ limit: 100 }),
         patientApi.list({ limit: 100 }),
         paymentApi.getSummary(),
         providerApi.list({ active: true }),
+        debtApi.list(),
       ]);
       setPayments(paymentsRes.data.data || []);
       setPatients(patientsRes.data.data || []);
-      setProviders((providersRes.data || []) as unknown as Provider[]);
+      setProviders(providersRes.data || []);
+      setDebts(debtsRes.data.debts || []);
       setSummary(summaryRes.data);
     } catch (error) {
       console.error('Error loading payments data:', error);
@@ -138,6 +145,37 @@ export function Payments() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDebtPayment = async () => {
+    if (!selectedDebt || !debtPaymentAmount) return;
+    
+    try {
+      const amount = parseFloat(debtPaymentAmount);
+      if (amount <= 0) {
+        toast.error('El monto debe ser mayor a 0');
+        return;
+      }
+      
+      await debtApi.addPayment(selectedDebt.id, {
+        amount,
+        method: debtPaymentMethod,
+      });
+      
+      toast.success('Pago de deuda registrado exitosamente');
+      setIsDebtPaymentDialogOpen(false);
+      setDebtPaymentAmount('');
+      loadData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Error al registrar pago');
+    }
+  };
+
+  const openDebtPaymentDialog = (debt: Debt) => {
+    setSelectedDebt(debt);
+    setDebtPaymentAmount(debt.remainingAmount?.toString() || '');
+    setDebtPaymentMethod('CASH');
+    setIsDebtPaymentDialogOpen(true);
   };
 
   const handleAddPayment = async () => {
@@ -387,30 +425,42 @@ export function Payments() {
                     className="pl-10"
                   />
                 </div>
-                <Select
-                  value={formData.patientId}
-                  onValueChange={(v) => setFormData({ ...formData, patientId: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={searchPatient ? `Buscando "${searchPatient}"...` : "Seleccionar paciente"} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[200px]">
-                    {filteredPatients.length === 0 && searchPatient ? (
-                      <SelectItem value="" disabled>
-                        No se encontraron pacientes con "{searchPatient}"
-                      </SelectItem>
-                    ) : (
-                      filteredPatients.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          <div className="flex flex-col">
-                            <span>{p.firstName} {p.lastName}</span>
-                            <span className="text-xs text-slate-500">{p.phone} • {p.email}</span>
-                          </div>
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <div className="border rounded-md p-2 max-h-[200px] overflow-y-auto">
+                  {filteredPatients.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-4">
+                      {searchPatient ? `No se encontraron pacientes con "${searchPatient}"` : 'Escribe para buscar pacientes'}
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {filteredPatients.slice(0, 10).map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, patientId: p.id })}
+                          className={`w-full text-left p-2 rounded hover:bg-slate-100 transition-colors ${
+                            formData.patientId === p.id ? 'bg-cyan-50 border border-cyan-200' : ''
+                          }`}
+                        >
+                          <p className="font-medium text-sm">{p.firstName} {p.lastName}</p>
+                          <p className="text-xs text-slate-500">{p.phone} • {p.email}</p>
+                        </button>
+                      ))}
+                      {filteredPatients.length > 10 && (
+                        <p className="text-xs text-slate-400 text-center py-1">
+                          Y {filteredPatients.length - 10} más...
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {formData.patientId && (
+                  <p className="text-sm text-cyan-600">
+                    Paciente seleccionado: <strong>
+                      {patients.find(p => p.id === formData.patientId)?.firstName} {' '}
+                      {patients.find(p => p.id === formData.patientId)?.lastName}
+                    </strong>
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -595,9 +645,10 @@ export function Payments() {
       </div>
 
       <Tabs defaultValue="ingresos" className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-4">
+        <TabsList className="grid w-full max-w-xl grid-cols-5">
           <TabsTrigger value="ingresos">Ingresos</TabsTrigger>
           <TabsTrigger value="egresos">Egresos</TabsTrigger>
+          <TabsTrigger value="deudas">Deudas</TabsTrigger>
           <TabsTrigger value="pacientes">Por Paciente</TabsTrigger>
           <TabsTrigger value="todos">Todos</TabsTrigger>
         </TabsList>
@@ -736,6 +787,69 @@ export function Payments() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="deudas">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                Deudas Pendientes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[400px]">
+                {debts.filter(d => d.status === 'PENDING' || d.status === 'PARTIAL').length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">
+                    <Wallet className="h-12 w-12 mx-auto mb-2" />
+                    <p>No hay deudas pendientes</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {debts
+                      .filter(d => d.status === 'PENDING' || d.status === 'PARTIAL')
+                      .map((debt) => (
+                        <div key={debt.id} className="flex items-center justify-between p-4 rounded-lg bg-red-50 border border-red-100">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
+                              <span className="text-white font-medium">
+                                {debt.patient?.firstName?.[0]}{debt.patient?.lastName?.[0]}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-900">
+                                {debt.patient?.firstName} {debt.patient?.lastName}
+                              </p>
+                              <p className="text-sm text-slate-500">{debt.reason}</p>
+                              <p className="text-xs text-slate-400">
+                                {format(parseISO(debt.createdAt), 'dd MMM yyyy', { locale: es })}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-red-600">
+                              ${debt.remainingAmount?.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              de ${debt.amount?.toFixed(2)}
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 border-emerald-300 text-emerald-600 hover:bg-emerald-50"
+                              onClick={() => openDebtPaymentDialog(debt)}
+                            >
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              Pagar
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="pacientes">
           <Card>
             <CardHeader>
@@ -850,6 +964,92 @@ export function Payments() {
             <Button variant="destructive" onClick={handleDelete}>
               <Trash2 className="h-4 w-4 mr-2" />
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Pago de Deuda */}
+      <Dialog open={isDebtPaymentDialogOpen} onOpenChange={setIsDebtPaymentDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-emerald-500" />
+              Registrar Pago de Deuda
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedDebt && (
+            <div className="space-y-4 py-4">
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm text-slate-500">Paciente</p>
+                <p className="font-medium">
+                  {selectedDebt.patient?.firstName} {selectedDebt.patient?.lastName}
+                </p>
+              </div>
+
+              <div className="p-4 bg-red-50 rounded-lg border border-red-100">
+                <p className="text-sm text-red-600 mb-1">{selectedDebt.reason}</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-xs text-slate-500">Total</p>
+                    <p className="font-medium">${selectedDebt.amount?.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Pagado</p>
+                    <p className="font-medium text-emerald-600">${selectedDebt.paidAmount?.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Pendiente</p>
+                    <p className="text-lg font-bold text-red-600">${selectedDebt.remainingAmount?.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label>Monto a pagar *</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={selectedDebt.remainingAmount}
+                    step="0.01"
+                    value={debtPaymentAmount}
+                    onChange={(e) => setDebtPaymentAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                
+                <div>
+                  <Label>Método de pago</Label>
+                  <Select value={debtPaymentMethod} onValueChange={setDebtPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDebtPaymentDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleDebtPayment}
+              disabled={!debtPaymentAmount || parseFloat(debtPaymentAmount) <= 0}
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Registrar Pago
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,7 +78,6 @@ const TIME_SLOTS = [
 ];
 
 export function Appointments() {
-  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -282,8 +280,19 @@ export function Appointments() {
         console.log('Adjunto:', attachment);
       }
       
-      // Crear deuda si no asistió y se especificó monto
-      if (!attendanceData.attended && attendanceData.createDebt && attendanceData.debtAmount > 0) {
+      // Crear deuda por el servicio cuando el paciente asiste
+      if (attendanceData.attended) {
+        await debtApi.create({
+          patientId: selectedAppointment.patientId,
+          amount: selectedAppointment.price || 0,
+          reason: `Servicio: ${selectedAppointment.service?.name || 'Atención'}`,
+          appointmentId: selectedAppointment.id,
+          notes: attendanceData.professionalNote || `Atención realizada el ${selectedAppointment.date}`,
+        });
+        toast.success(`Deuda de $${(selectedAppointment.price || 0).toFixed(2)} registrada por el servicio`);
+      } 
+      // Crear deuda por inasistencia si se especificó
+      else if (attendanceData.createDebt && attendanceData.debtAmount > 0) {
         await debtApi.create({
           patientId: selectedAppointment.patientId,
           amount: attendanceData.debtAmount,
@@ -292,10 +301,8 @@ export function Appointments() {
           notes: `Deuda generada por inasistencia a cita del ${selectedAppointment.date} a las ${selectedAppointment.time}`,
         });
         toast.warning(`Deuda de $${attendanceData.debtAmount.toFixed(2)} registrada por inasistencia`);
-      } else if (!attendanceData.attended) {
-        toast.warning('Se ha registrado la inasistencia');
       } else {
-        toast.success('Asistencia confirmada y nota registrada');
+        toast.warning('Se ha registrado la inasistencia (sin deuda)');
       }
       
       // Resetear formulario
