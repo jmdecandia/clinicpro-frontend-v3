@@ -51,7 +51,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { paymentApi, patientApi, providerApi, debtApi } from '@/services/api';
-import type { Payment, Patient, Provider, Debt } from '@/types/api';
+import type { Payment, Patient, Debt } from '@/types/api';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
